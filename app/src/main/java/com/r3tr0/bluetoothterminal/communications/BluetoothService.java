@@ -39,10 +39,11 @@ public class BluetoothService extends Service {
 
     public static final int COMMAND_INITIALIZE = 0;
     public static final int COMMAND_DISCONNECT = 1;
-    public static final int COMMAND_READ = 2;
+    public static final int COMMAND_START_READING = 2;
     public static final int COMMAND_WRITE = 3;
     public static final int COMMAND_GET_PAIRED_DEVICES = 4;
     public static final int COMMAND_GET_STATUS = 5;
+    public static final int COMMAND_STOP_READING = 6;
 
     public BluetoothService() {
     }
@@ -94,11 +95,18 @@ public class BluetoothService extends Service {
                     e.printStackTrace();
                 }
 
-        } else if (command == COMMAND_READ) {
+        } else if (command == COMMAND_START_READING) {
             if (readingThread == null)
                 readingThread = new ReadingThread();
-            read();
+            readingThread.start();
         }
+
+        else if (command == COMMAND_STOP_READING){
+            if (readingThread == null)
+                readingThread = new ReadingThread();
+            readingThread.stopReading();
+        }
+
         else if (command == COMMAND_WRITE) {
             Log.e("testing service", intent.getStringExtra("data"));
             try {
@@ -175,11 +183,6 @@ public class BluetoothService extends Service {
     }
 
 
-
-    public void read() {
-        readingThread.start();
-    }
-
     public void write(byte[] bytes) throws IOException {
         outputStream.write(bytes);
         outputStream.flush();
@@ -192,13 +195,20 @@ public class BluetoothService extends Service {
     }
 
     private class ReadingThread extends Thread{
+        private volatile boolean isStop = true;
+
+        @Override
+        public synchronized void start() {
+            super.start();
+            isStop = true;
+        }
 
         @Override
         public void run() {
             super.run();
 
             byte[] buffer = new byte[1024];
-            while(true) {
+            while(isStop) {
                 int bytes = -1;
                 try {
                     bytes = inputStream.read(buffer);
@@ -218,6 +228,10 @@ public class BluetoothService extends Service {
                     intent1.removeExtra("data");
                 }
             }
+        }
+
+        public void stopReading(){
+            this.isStop = false;
         }
     }
 }

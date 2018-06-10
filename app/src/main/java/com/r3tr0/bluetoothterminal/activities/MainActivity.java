@@ -2,7 +2,6 @@ package com.r3tr0.bluetoothterminal.activities;
 
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -92,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         terminalRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         terminalRecyclerView.setAdapter(adapter);
 
-        btIntent.putExtra("command", BluetoothService.COMMAND_READ);
+        btIntent.putExtra("command", BluetoothService.COMMAND_START_READING);
         startService(btIntent);
         btIntent.removeExtra("command");
     }
