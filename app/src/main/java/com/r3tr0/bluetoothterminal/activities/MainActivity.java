@@ -2,19 +2,22 @@ package com.r3tr0.bluetoothterminal.activities;
 
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.r3tr0.bluetoothterminal.R;
 import com.r3tr0.bluetoothterminal.adapters.ListAdapter;
 import com.r3tr0.bluetoothterminal.communications.BluetoothService;
 import com.r3tr0.bluetoothterminal.communications.BluetoothServiceReceiver;
+import com.r3tr0.bluetoothterminal.enums.ServiceCommand;
+import com.r3tr0.bluetoothterminal.enums.ServiceFlag;
 
 import java.util.ArrayList;
 
@@ -30,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     TextView statusTextView;
     EditText commandEditText;
     Button sendButton;
+    Button readingButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
         terminalRecyclerView = findViewById(R.id.terminalRecyclerView);
         statusTextView = findViewById(R.id.statusTextView);
         sendButton = findViewById(R.id.commandButton);
+        readingButton = findViewById(R.id.stopReadingButton);
         commandEditText = findViewById(R.id.commandsEditText);
         adapter = new ListAdapter(this, new ArrayList<String>());
         btIntent = new Intent(this, BluetoothService.class);
@@ -51,22 +56,22 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = (Intent) message;
 
                 String data = intent.getStringExtra("data");
-                int status = intent.getIntExtra("status", -1);
+                ServiceFlag status = (ServiceFlag) intent.getSerializableExtra("status");
 
                 if (data != null){
                     adapter.getStringsList().add("from receiver : " + data);
                     adapter.notifyDataSetChanged();
                 }
 
-                if (status != -1){
+                if (status != null) {
                     switch (status){
-                        case BluetoothService.FLAG_CONNECTED:
+                        case connected:
                             statusTextView.setText("Status : Connected");
                             break;
-                        case BluetoothService.FLAG_NOT_CONNECTED:
+                        case disconnected:
                             statusTextView.setText("Status : Not connected");
                             break;
-                        case BluetoothService.FLAG_CONNECTION_FAILED:
+                        case connectionFailed:
                             statusTextView.setText("Status : Connection failed");
                             break;
                     }
@@ -78,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if(statusTextView.getText().equals("Status : Connected")){
-                    btIntent.putExtra("command", BluetoothService.COMMAND_WRITE);
+                    btIntent.putExtra("command", ServiceCommand.write);
                     btIntent.putExtra("data", commandEditText.getText().toString() + ";");
                     startService(btIntent);
                     btIntent.removeExtra("command");
@@ -88,10 +93,29 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        readingButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (readingButton.getText().equals("Stop reading")) {
+                    btIntent.putExtra("command", ServiceCommand.stopReading);
+                    startService(btIntent);
+                    btIntent.removeExtra("command");
+                    readingButton.setText("Start reading");
+                    Toast.makeText(MainActivity.this, "Stopped reading", Toast.LENGTH_LONG).show();
+                } else {
+                    btIntent.putExtra("command", ServiceCommand.startReading);
+                    startService(btIntent);
+                    btIntent.removeExtra("command");
+                    readingButton.setText("Stop reading");
+                    Toast.makeText(MainActivity.this, "Started reading", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
         terminalRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         terminalRecyclerView.setAdapter(adapter);
 
-        btIntent.putExtra("command", BluetoothService.COMMAND_START_READING);
+        btIntent.putExtra("command", ServiceCommand.startReading);
         startService(btIntent);
         btIntent.removeExtra("command");
     }
@@ -106,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         registerReceiver(receiver, new IntentFilter(BluetoothService.RECEIVER_ACTION));
-        btIntent.putExtra("command", BluetoothService.COMMAND_GET_STATUS);
+        btIntent.putExtra("command", ServiceCommand.getStatus);
         startService(btIntent);
         btIntent.removeExtra("command");
     }

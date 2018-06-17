@@ -9,10 +9,14 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.r3tr0.bluetoothterminal.enums.ServiceCommand;
+import com.r3tr0.bluetoothterminal.enums.ServiceFlag;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class BluetoothService extends Service {
@@ -28,22 +32,7 @@ public class BluetoothService extends Service {
 
     private ReadingThread readingThread;
 
-    private int flag = 1;
-
-    public static final int FLAG_PAIRED = 5;
-    public static final int FLAG_NO_DEVICE = 4;
-    public static final int FLAG_CONNECTION_FAILED = 3;
-    public static final int FLAG_CONNECTED = 2;
-    public static final int FLAG_NOT_CONNECTED = 1;
-    public static final int FLAG_CONNECTING = 0;
-
-    public static final int COMMAND_INITIALIZE = 0;
-    public static final int COMMAND_DISCONNECT = 1;
-    public static final int COMMAND_START_READING = 2;
-    public static final int COMMAND_WRITE = 3;
-    public static final int COMMAND_GET_PAIRED_DEVICES = 4;
-    public static final int COMMAND_GET_STATUS = 5;
-    public static final int COMMAND_STOP_READING = 6;
+    private ServiceFlag flag = ServiceFlag.disconnected;
 
     public BluetoothService() {
     }
@@ -56,73 +45,63 @@ public class BluetoothService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        int command = intent.getIntExtra("command", -1);
+        ServiceCommand command = (ServiceCommand) intent.getSerializableExtra("command");
 
         Log.e("service", "Started with command : " + command);
         if (intent1 == null)
             intent1 = new Intent("com.r3tr0.bluetoothterminal.communications.OBD");
 
         //commands
-        if (command == COMMAND_INITIALIZE) {
+        if (command == ServiceCommand.initialize) {
             if (bluetoothSocket == null){
                 BluetoothDevice device = intent.getParcelableExtra("device");
                 if (device != null)
                     initialize(device);
                 else {
-                    intent1.putExtra("status", FLAG_NO_DEVICE);
-                    flag = FLAG_NO_DEVICE;
+                    intent1.putExtra("status", ServiceFlag.noDevice);
+                    flag = ServiceFlag.noDevice;
                     sendBroadcast(intent1);
                     intent1.removeExtra("status");
                 }
             }
             else {
-                intent1.putExtra("status", FLAG_PAIRED);
-                flag = FLAG_PAIRED;
+                intent1.putExtra("status", ServiceFlag.paired);
+                flag = ServiceFlag.paired;
                 sendBroadcast(intent1);
                 intent1.removeExtra("status");
             }
-        }
-
-        else if (command == COMMAND_DISCONNECT) {
+        } else if (command == ServiceCommand.disconnect) {
             if (bluetoothSocket != null)
                 try {
                     inputStream = null;
                     outputStream = null;
                     bluetoothSocket.close();
                     bluetoothSocket = null;
-                    flag = FLAG_NOT_CONNECTED;
+                    flag = ServiceFlag.disconnected;
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
 
-        } else if (command == COMMAND_START_READING) {
+        } else if (command == ServiceCommand.startReading) {
             if (readingThread == null)
                 readingThread = new ReadingThread();
             readingThread.start();
-        }
-
-        else if (command == COMMAND_STOP_READING){
+        } else if (command == ServiceCommand.stopReading) {
             if (readingThread == null)
                 readingThread = new ReadingThread();
             readingThread.stopReading();
-        }
-
-        else if (command == COMMAND_WRITE) {
+        } else if (command == ServiceCommand.write) {
             Log.e("testing service", intent.getStringExtra("data"));
             try {
                 write(intent.getStringExtra("data").getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-
-        else if (command == COMMAND_GET_PAIRED_DEVICES){
+        } else if (command == ServiceCommand.getPairedDevices) {
             intent1.putExtra("devices", getAllPairedDevices());
             sendBroadcast(intent1);
             intent1.removeExtra("devices");
-        }
-
-        else if (command == COMMAND_GET_STATUS){
+        } else if (command == ServiceCommand.getStatus) {
             intent1.putExtra("status", flag);
             sendBroadcast(intent1);
             intent1.removeExtra("status");
@@ -141,7 +120,7 @@ public class BluetoothService extends Service {
     public void initialize(BluetoothDevice device) {
         //Server socket initialized
         try {
-            intent1.putExtra("status", FLAG_CONNECTING);
+            intent1.putExtra("status", ServiceFlag.connecting);
             sendBroadcast(intent1);
             intent1.removeExtra("status");
             bluetoothSocket = device.createRfcommSocketToServiceRecord(myUUID);
@@ -158,24 +137,24 @@ public class BluetoothService extends Service {
                 tempOut = bluetoothSocket.getOutputStream();
             } catch (IOException e) {
                 e.printStackTrace();
-                intent1.putExtra("status", FLAG_CONNECTION_FAILED);
+                intent1.putExtra("status", ServiceFlag.connectionFailed);
                 sendBroadcast(intent1);
                 intent1.removeExtra("status");
-                flag = FLAG_CONNECTION_FAILED;
+                flag = ServiceFlag.connectionFailed;
             }
 
             inputStream = tempIn;
             outputStream = tempOut;
 
-            flag = FLAG_CONNECTED;
-            intent1.putExtra("status", FLAG_CONNECTED);
+            flag = ServiceFlag.connected;
+            intent1.putExtra("status", ServiceFlag.connected);
             sendBroadcast(intent1);
             intent1.removeExtra("status");
 
         } catch (IOException e) {
             e.printStackTrace();
-            flag = FLAG_CONNECTION_FAILED;
-            intent1.putExtra("status", FLAG_CONNECTION_FAILED);
+            flag = ServiceFlag.connectionFailed;
+            intent1.putExtra("status", ServiceFlag.connectionFailed);
             sendBroadcast(intent1);
             intent1.removeExtra("status");
         }
@@ -219,7 +198,7 @@ public class BluetoothService extends Service {
                 }
                 if (bytes != -1) {
                     Log.e("test thread", "read");
-                    intent1.putExtra("data", new String(buffer,0,bytes));
+                    intent1.putExtra("data", Arrays.toString(buffer));
                     sendBroadcast(intent1);
                     intent1.removeExtra("data");
                 } else {
@@ -234,4 +213,6 @@ public class BluetoothService extends Service {
             this.isStop = false;
         }
     }
+
+
 }

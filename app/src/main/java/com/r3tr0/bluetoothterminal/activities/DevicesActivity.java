@@ -10,12 +10,13 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.r3tr0.bluetoothterminal.R;
 import com.r3tr0.bluetoothterminal.adapters.ListAdapter;
 import com.r3tr0.bluetoothterminal.communications.BluetoothService;
 import com.r3tr0.bluetoothterminal.communications.BluetoothServiceReceiver;
+import com.r3tr0.bluetoothterminal.enums.ServiceCommand;
+import com.r3tr0.bluetoothterminal.enums.ServiceFlag;
 import com.r3tr0.bluetoothterminal.interfaces.OnItemClickListener;
 
 import java.util.ArrayList;
@@ -52,7 +53,7 @@ public class DevicesActivity extends AppCompatActivity {
 
                 Object data = ((Intent)message).getSerializableExtra("devices");
                 Log.e("extra", "status : " + ((Intent)message).getStringExtra("status"));
-                int connectionFlag = ((Intent)message).getIntExtra("status", -1);
+                ServiceFlag connectionFlag = (ServiceFlag) ((Intent) message).getSerializableExtra("status");
 
                 if (data != null) {
                     bluetoothDevices = (ArrayList<BluetoothDevice>) data;
@@ -63,27 +64,27 @@ public class DevicesActivity extends AppCompatActivity {
                     adapter.notifyDataSetChanged();
                 }
 
-                if (connectionFlag != -1){
+                if (connectionFlag != null) {
                     switch (connectionFlag) {
-                        case BluetoothService.FLAG_CONNECTED:
+                        case connected:
                             nextButton.setText("Connected, click me to continue!");
                             nextButton.setEnabled(true);
                             break;
 
-                        case BluetoothService.FLAG_CONNECTION_FAILED:
+                        case connectionFailed:
                             nextButton.setText("Failed to connect to device!");
                             nextButton.setEnabled(false);
                             break;
 
-                        case BluetoothService.FLAG_CONNECTING:
+                        case connecting:
                             nextButton.setText("Connecting to device ...");
                             nextButton.setEnabled(false);
                             break;
-                        case BluetoothService.FLAG_NO_DEVICE:
+                        case noDevice:
                             nextButton.setText("No device was sent!");
                             nextButton.setEnabled(false);
                             break;
-                        case BluetoothService.FLAG_PAIRED:
+                        case paired:
                             nextButton.setText("A device already paired");
                             nextButton.setEnabled(false);
                             break;
@@ -95,7 +96,7 @@ public class DevicesActivity extends AppCompatActivity {
         pairedButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                btServiceIntent.putExtra("command", BluetoothService.COMMAND_GET_PAIRED_DEVICES);
+                btServiceIntent.putExtra("command", ServiceCommand.getPairedDevices);
                 startService(btServiceIntent);
                 btServiceIntent.removeExtra("command");
             }
@@ -112,7 +113,7 @@ public class DevicesActivity extends AppCompatActivity {
             @Override
             public void onClick(View view, int position) {
                 Log.e("list", "Clicked");
-                btServiceIntent.putExtra("command", BluetoothService.COMMAND_INITIALIZE);
+                btServiceIntent.putExtra("command", ServiceCommand.initialize);
                 btServiceIntent.putExtra("device", bluetoothDevices.get(position));
                 startService(btServiceIntent);
                 btServiceIntent.removeExtra("command");
