@@ -93,7 +93,7 @@ public class BluetoothService extends Service {
         } else if (command == ServiceCommand.write) {
             Log.e("testing service", intent.getStringExtra("data"));
             try {
-                write(intent.getStringExtra("data").getBytes());
+                write((intent.getStringExtra("data") + "\r").getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -163,6 +163,7 @@ public class BluetoothService extends Service {
 
 
     public void write(byte[] bytes) throws IOException {
+        Log.e("sent data as bytes ", Arrays.toString(bytes));
         outputStream.write(bytes);
         outputStream.flush();
     }
@@ -186,25 +187,43 @@ public class BluetoothService extends Service {
         public void run() {
             super.run();
 
-            byte[] buffer = new byte[1024];
+            char c;
             while(isStop) {
-                int bytes = -1;
                 try {
-                    bytes = inputStream.read(buffer);
+                    byte b = 0;
+                    StringBuilder res = new StringBuilder();
+                    while (((b = (byte) inputStream.read()) > -1)) {
+                        c = (char) b;
+                        if (c == '>') // read until '>' arrives
+                        {
+                            break;
+                        }
+                        Log.e("Data", c + "");
+                        res.append(c);
+                        if (res.toString().matches("TDA[0-9]+\\sV[0-9]+\\.[0-9]+\\s"))
+                            break;
+                    }
+
+                    String result = res.toString().replaceAll("SEARCHING\\.+", "");
+                    result = result.replaceAll("\\s", "");
+                    result = result.replaceAll("(BUS INIT)|(BUSINIT)|(\\.)", "");
+
+                    if (result.length() > 0) {
+                        Log.e("test thread", "read");
+                        intent1.putExtra("data", result);
+                        sendBroadcast(intent1);
+                        intent1.removeExtra("data");
+                    } else {
+                        Log.e("test thread", "read");
+                        intent1.putExtra("data", "");
+                        sendBroadcast(intent1);
+                        intent1.removeExtra("data");
+                    }
+                    //bytes = inputStream.read(buffer);
                     //tempMsg = new String(buffer,0,bytes);
 
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
-                if (bytes != -1) {
-                    Log.e("test thread", "read");
-                    intent1.putExtra("data", Arrays.toString(buffer));
-                    sendBroadcast(intent1);
-                    intent1.removeExtra("data");
-                } else {
-                    intent1.putExtra("data", "");
-                    sendBroadcast(intent1);
-                    intent1.removeExtra("data");
                 }
             }
         }

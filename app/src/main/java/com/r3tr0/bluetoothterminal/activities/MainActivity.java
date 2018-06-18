@@ -59,6 +59,21 @@ public class MainActivity extends AppCompatActivity {
                 ServiceFlag status = (ServiceFlag) intent.getSerializableExtra("status");
 
                 if (data != null){
+
+                    byte[] bytes = data.getBytes();
+
+                    if (bytes.length > 7) {
+
+                        if (!data.startsWith("TDA")) {
+                            int firstPar = Integer.parseInt(data.charAt(4) + "" + data.charAt(5), 16);
+                            Toast.makeText(MainActivity.this, "current fault codes : " + (firstPar), Toast.LENGTH_LONG).show();
+                        }
+                        /*
+                        int secondPar = Integer.parseInt(data.charAt(6) + "" + data.charAt(7), 16);
+
+                        double rpm = 0.25 * (firstPar * 256 + secondPar);
+                        Toast.makeText(MainActivity.this, "current rpm : " + rpm, Toast.LENGTH_LONG).show();*/
+                    }
                     adapter.getStringsList().add("from receiver : " + data);
                     adapter.notifyDataSetChanged();
                 }
@@ -84,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if(statusTextView.getText().equals("Status : Connected")){
                     btIntent.putExtra("command", ServiceCommand.write);
-                    btIntent.putExtra("data", commandEditText.getText().toString() + ";");
+                    btIntent.putExtra("data", commandEditText.getText().toString());
                     startService(btIntent);
                     btIntent.removeExtra("command");
                     btIntent.removeExtra("data");
